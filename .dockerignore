@@ -1,0 +1,14 @@
+.git
+.gitignore
+.idea
+*.iml
+.gradle
+build
+out
+**/.DS_Store
+**/Thumbs.db
+src/test
+node_modules
+apps
+test-apps
+logs
