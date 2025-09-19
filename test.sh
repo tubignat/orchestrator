@@ -39,27 +39,10 @@ done
 
 echo "Started on port $HOST_PORT"
 
-bundle() {
-  local app="${1:-}"
-
-cat <<EOF > index.js
-const http = require('http');
-const port = process.env.SERVER_PORT || 0;
-const server = http.createServer((req, res) => {
-  console.log(new Date(), req.method, req.url);
-  res.end('Hello from ${app}');
-});
-server.listen(port);
-process.on('SIGTERM', () => process.exit(0));
-EOF
-  tar -czf ${app}.tar.gz index.js
-  rm index.js
-}
-
 echo "Uploading sample app bundles..."
 
-bundle my-app
-bundle test
+sh sample-bundle.sh my-app
+sh sample-bundle.sh test
 
 curl -X POST "http://localhost:${HOST_PORT}/deploy?name=my-app" \
      --header "Content-Type: application/octet-stream" \
@@ -73,26 +56,27 @@ curl -X POST "http://localhost:${HOST_PORT}/deploy?name=test" \
 
 rm test.tar.gz
 
-echo "Loaded two sample app bundles. Access them via URLs:"
+echo "Set up complete"
 echo ""
-
-echo "http://my-app.localhost:${HOST_PORT}"
-echo "http://test.localhost:${HOST_PORT}"
+echo ""
+echo "Loaded two sample app bundles. Access them via URLs:"
+echo "    http://my-app.localhost:${HOST_PORT}"
+echo "    http://test.localhost:${HOST_PORT}"
+echo ""
+echo "NOTE: subdomain routing with localhost works in Chrome and Firefox, but doesn't work in Safari"
+echo "To test with Safari, add domains to /etc/hosts and pass it to the orchestrator"
+echo "    docker run -p 80:8080 -e DOMAIN=kineto.local tubignat/orchestrator:latest"
 
 echo ""
 echo "Commands:"
-echo ""
-echo "curl -X GET \"http://localhost:${HOST_PORT}/status?name=my-app\""
-echo "curl -X POST \"http://localhost:${HOST_PORT}/start?name=my-app\""
-echo "curl -X POST \"http://localhost:${HOST_PORT}/stop?name=my-app\""
-echo "curl -X POST \"http://localhost:${HOST_PORT}/logs?name=my-app\""
+echo "    curl -X GET \"http://localhost:${HOST_PORT}/status?name=my-app\""
+echo "    curl -X GET \"http://localhost:${HOST_PORT}/logs?name=my-app\""
+echo "    curl -X POST \"http://localhost:${HOST_PORT}/start?name=my-app\""
+echo "    curl -X POST \"http://localhost:${HOST_PORT}/stop?name=my-app\""
 
 echo ""
-echo "To deploy your own app, first, prepare a directory with NodeJS. "
-echo ""
-echo ""
-echo "tar -czf my-app.tar.gz -C path/to/app ."
-echo ""
-echo "curl -X POST \"http://localhost:${HOST_PORT}/deploy?name=my-app\" \\"
-echo "     -header \"Content-Type: application/octet-stream\" \\"
-echo "     --data-binary @./my-app.tar.gz"
+echo "To deploy a new app:"
+echo "    sh sample-bundle.sh new-app"
+echo "    curl -X POST \"http://localhost:${HOST_PORT}/deploy?name=new-app\" \\"
+echo "       --header \"Content-Type: application/octet-stream\" \\"
+echo "       --data-binary @./new-app.tar.gz"

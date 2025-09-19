@@ -3,6 +3,7 @@ package com.example.orchestrator
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import kotlin.math.roundToInt
 
 @RestController
 class Controller(val manager: AppManager) {
@@ -55,7 +56,13 @@ class Controller(val manager: AppManager) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build()
         }
 
-        return ResponseEntity.ok(manager.status(name).name)
+        val status = manager.status(name)
+
+        val usageDetails = if (status.usage != null) " | mem: ${(status.usage.mem / 1024).roundToInt()}MiB | cpu: ${status.usage.cpu}%" else ""
+
+        return ResponseEntity.ok(
+            "$name | ${status.status.name}${usageDetails}\n"
+        )
     }
 
     @GetMapping("/logs")
@@ -68,6 +75,8 @@ class Controller(val manager: AppManager) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build()
         }
 
-        return ResponseEntity.ok(manager.logs(name, limit).joinToString("\n"))
+        return ResponseEntity.ok(
+            manager.logs(name, limit).joinToString("\n").plus("\n")
+        )
     }
 }

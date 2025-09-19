@@ -1,6 +1,7 @@
 package com.example.orchestrator
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
@@ -55,7 +56,7 @@ class E2ETest {
         deploy(client, appName, createSampleAppBundle())
 
         wait {
-            assertEquals("RUNNING", status(client, appName).body())
+            assertTrue(status(client, appName).body().startsWith("$appName | RUNNING"))
             assertEquals("ok", httpGET("http://$appName.localhost:$port").body)
             assertEquals("ok", httpGET("http://www.$appName.localhost:$port").body)
         }
@@ -63,7 +64,7 @@ class E2ETest {
         stop(client, appName)
 
         wait {
-            assertEquals("STOPPED", status(client, appName).body())
+            assertEquals("$appName | STOPPED\n", status(client, appName).body())
             assertThrows<WebClientResponseException> { httpGET("http://$appName.localhost:$port") }
             assertThrows<WebClientResponseException> { httpGET("http://www.$appName.localhost:$port") }
         }
@@ -71,7 +72,7 @@ class E2ETest {
         start(client, appName)
 
         wait {
-            assertEquals("RUNNING", status(client, appName).body())
+            assertTrue(status(client, appName).body().startsWith("$appName | RUNNING"))
             assertEquals("ok", httpGET("http://$appName.localhost:$port").body)
             assertEquals("ok", httpGET("http://www.$appName.localhost:$port").body)
         }
@@ -85,10 +86,10 @@ class E2ETest {
         deploy(client, "second-app", createSampleAppBundle("payload #2"))
 
         wait {
-            assertEquals("RUNNING", status(client, "first-app").body())
+            assertTrue(status(client, "first-app").body().startsWith("first-app | RUNNING"))
             assertEquals("payload #1", httpGET("http://first-app.localhost:$port").body)
 
-            assertEquals("RUNNING", status(client, "second-app").body())
+            assertTrue(status(client, "second-app").body().startsWith("second-app | RUNNING"))
             assertEquals("payload #2", httpGET("http://second-app.localhost:$port").body)
         }
     }
@@ -101,14 +102,14 @@ class E2ETest {
         deploy(client, app, createSampleAppBundle("Version: 1.0.0"))
 
         wait {
-            assertEquals("RUNNING", status(client, app).body())
+            assertTrue(status(client, app).body().startsWith("$app | RUNNING"))
             assertEquals("Version: 1.0.0", httpGET("http://$app.localhost:$port").body)
         }
 
         deploy(client, app, createSampleAppBundle("Version: 2.0.0"))
 
         wait {
-            assertEquals("RUNNING", status(client, app).body())
+            assertTrue(status(client, app).body().startsWith("$app | RUNNING"))
             assertEquals("Version: 2.0.0", httpGET("http://$app.localhost:$port").body)
         }
     }
@@ -141,7 +142,7 @@ class E2ETest {
         assertThrows<WebClientResponseException> { httpGET("http://$app.localhost:$port").body }
 
         wait {
-            assertEquals("ERROR", status(client, app).body())
+            assertEquals("$app | ERROR\n", status(client, app).body())
         }
     }
 
@@ -153,7 +154,7 @@ class E2ETest {
         deploy(client, app, createSampleAppBundle())
 
         wait {
-            assertEquals("RUNNING", status(client, app).body())
+            assertTrue(status(client, app).body().startsWith("$app | RUNNING"))
             assertEquals("ok", httpGET("http://$app.localhost:$port/status").body)
         }
     }

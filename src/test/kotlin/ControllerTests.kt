@@ -7,11 +7,22 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.reactive.server.WebTestClient
+import org.springframework.web.reactive.function.client.WebClient
 
+@Import(Config::class, ControllerTests.TestConfig::class)
 @WebFluxTest(controllers = [Controller::class])
 class ControllerTests {
+
+    @TestConfiguration(proxyBeanMethods = false)
+    class TestConfig {
+        @Bean
+        fun webClientBuilder(): WebClient.Builder = WebClient.builder()
+    }
 
     @Autowired
     lateinit var webClient: WebTestClient
@@ -122,13 +133,13 @@ class ControllerTests {
     @Test
     fun statusShouldReturnOkWithBodyWhenExists() {
         every { manager.exists("app3") } returns true
-        every { manager.status("app3") } returns AppStatus.RUNNING
+        every { manager.status("app3") } returns AppStatus(status = ProcessStatus.RUNNING, null)
 
         webClient.get()
             .uri { it.path("/status").queryParam("name", "app3").build() }
             .exchange()
             .expectStatus().isOk
-            .expectBody(String::class.java).isEqualTo("RUNNING")
+            .expectBody(String::class.java).isEqualTo("app3 | RUNNING\n")
     }
 
     @Test
@@ -147,5 +158,55 @@ class ControllerTests {
             .uri { it.path("/status").queryParam("name", "").build() }
             .exchange()
             .expectStatus().isBadRequest
+    }
+
+    @Test
+    fun logsShouldReturnOkWithBodyWhenExistsDefaultLimit() {
+        every { manager.exists("app4") } returns true
+        every { manager.logs("app4", 50) } returns listOf("line1", "line2")
+
+        webClient.get()
+            .uri { it.path("/logs").queryParam("name", "app4").build() }
+            .exchange()
+            .expectStatus().isOk
+            .expectBody(String::class.java).isEqualTo("line1\nline2\n")
+
+        verify(exactly = 1) { manager.logs("app4", 50) }
+    }
+
+    @Test
+    fun logsShouldReturnOkWithBodyWhenLimitSpecified() {
+        every { manager.exists("app5") } returns true
+        every { manager.logs("app5", 10) } returns listOf("only")
+
+        webClient.get()
+            .uri { it.path("/logs").queryParam("name", "app5").queryParam("limit", "10").build() }
+            .exchange()
+            .expectStatus().isOk
+            .expectBody(String::class.java).isEqualTo("only\n")
+
+        verify(exactly = 1) { manager.logs("app5", 10) }
+    }
+
+    @Test
+    fun logsShouldReturnNotFoundWhenNotExists() {
+        every { manager.exists("missing-logs") } returns false
+
+        webClient.get()
+            .uri { it.path("/logs").queryParam("name", "missing-logs").build() }
+            .exchange()
+            .expectStatus().isNotFound
+
+        verify(exactly = 0) { manager.logs(any(), any()) }
+    }
+
+    @Test
+    fun logsShouldReturnBadRequestOnInvalidName() {
+        webClient.get()
+            .uri { it.path("/logs").queryParam("name", "bad name").build() }
+            .exchange()
+            .expectStatus().isBadRequest
+
+        verify(exactly = 0) { manager.logs(any(), any()) }
     }
 }

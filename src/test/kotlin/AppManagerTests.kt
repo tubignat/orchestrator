@@ -80,7 +80,7 @@ class AppManagerTests {
     @Test
     fun startShouldDoNothingIfAppIsRunningAlready() {
         val runner = mockk<AppRunner>(relaxed = true)
-        every { runner.status(any()) } answers { AppStatus.RUNNING }
+        every { runner.status(any()) } answers { ProcessStatus.RUNNING }
         val manager = ThreadSafeAppManager(runner, testConfig())
 
         manager.start("test-app")
@@ -93,10 +93,10 @@ class AppManagerTests {
         val runner = mockk<AppRunner>(relaxed = true)
         val manager = ThreadSafeAppManager(runner, testConfig())
 
-        every { runner.status(any()) } answers { AppStatus.NOT_STARTED }
+        every { runner.status(any()) } answers { ProcessStatus.NOT_STARTED }
         manager.start("test-app")
 
-        every { runner.status(any()) } answers { AppStatus.RUNNING }
+        every { runner.status(any()) } answers { ProcessStatus.RUNNING }
         manager.stop("test-app")
 
         verify(exactly = 1) { runner.stop(any()) }
@@ -105,7 +105,7 @@ class AppManagerTests {
     @Test
     fun stopShouldDoNothingIfAppIsNotRunning() {
         val runner = mockk<AppRunner>(relaxed = true)
-        every { runner.status(any()) } answers { AppStatus.STOPPED }
+        every { runner.status(any()) } answers { ProcessStatus.STOPPED }
         val manager = ThreadSafeAppManager(runner, testConfig())
 
         manager.stop("test-app")
@@ -118,14 +118,14 @@ class AppManagerTests {
         val runner = mockk<AppRunner>(relaxed = true)
         val manager = ThreadSafeAppManager(runner, testConfig())
 
-        every { runner.status(any()) } answers { AppStatus.STOPPED }
-        assertEquals(AppStatus.STOPPED, manager.status("test-app"))
+        every { runner.status(any()) } answers { ProcessStatus.STOPPED }
+        assertEquals(ProcessStatus.STOPPED, manager.status("test-app").status)
 
-        every { runner.status(any()) } answers { AppStatus.RUNNING }
-        assertEquals(AppStatus.RUNNING, manager.status("test-app"))
+        every { runner.status(any()) } answers { ProcessStatus.RUNNING }
+        assertEquals(ProcessStatus.RUNNING, manager.status("test-app").status)
 
-        every { runner.status(any()) } answers { AppStatus.NOT_STARTED }
-        assertEquals(AppStatus.NOT_STARTED, manager.status("test-app"))
+        every { runner.status(any()) } answers { ProcessStatus.NOT_STARTED }
+        assertEquals(ProcessStatus.NOT_STARTED, manager.status("test-app").status)
     }
 
     @Test
@@ -133,16 +133,16 @@ class AppManagerTests {
         val runner = mockk<AppRunner>(relaxed = true)
         val manager = ThreadSafeAppManager(runner, testConfig())
 
-        every { runner.status(any()) } answers { AppStatus.NOT_STARTED }
+        every { runner.status(any()) } answers { ProcessStatus.NOT_STARTED }
         assertEquals(null, manager.appURL("test-app"))
 
         every { runner.start(any(), any()) } answers { AppProcess(1, "test-app",1111, Any(), false) }
         manager.start("test-app")
 
-        every { runner.status(any()) } answers { AppStatus.RUNNING }
-        assertEquals("http://localhost:1111", manager.appURL("test-app"))
+        every { runner.status(any()) } answers { ProcessStatus.RUNNING }
+        assertEquals("http://127.0.0.1:1111", manager.appURL("test-app"))
 
-        every { runner.status(any()) } answers { AppStatus.STOPPED }
+        every { runner.status(any()) } answers { ProcessStatus.STOPPED }
         assertEquals(null, manager.appURL("test-app"))
     }
 
@@ -174,7 +174,7 @@ class AppManagerTests {
 
         val tar = createTarGz(mapOf("index.js" to "console.log('v2');\n"))
 
-        every { runner.status(any()) } answers { AppStatus.RUNNING }
+        every { runner.status(any()) } answers { ProcessStatus.RUNNING }
         manager.deploy("test-app", tar)
 
         assertTrue(dir.exists() && dir.isDirectory)

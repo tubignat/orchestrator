@@ -17,7 +17,7 @@ class AppRunnerTests {
     @Test
     fun statusNotStartedWhenNull() {
         val runner = AppRunnerImpl(Config())
-        assertEquals(AppStatus.NOT_STARTED, runner.status(null))
+        assertEquals(ProcessStatus.NOT_STARTED, runner.status(null))
     }
 
     @Test
@@ -25,7 +25,7 @@ class AppRunnerTests {
         val runner = AppRunnerImpl(Config())
         val p = mockk<Process>(relaxed = true)
         every { p.isAlive } returns true
-        assertEquals(AppStatus.RUNNING, runner.status(AppProcess(1, "name", 1000, p, false)))
+        assertEquals(ProcessStatus.RUNNING, runner.status(AppProcess(1, "name", 1000, p, false)))
     }
 
     @Test
@@ -34,7 +34,7 @@ class AppRunnerTests {
         val p = mockk<Process>(relaxed = true)
         every { p.isAlive } returns false
         every { p.exitValue() } returns 0
-        assertEquals(AppStatus.STOPPED, runner.status(AppProcess(2, "name", 1001, p, false)))
+        assertEquals(ProcessStatus.STOPPED, runner.status(AppProcess(2, "name", 1001, p, false)))
     }
 
     @Test
@@ -43,7 +43,7 @@ class AppRunnerTests {
         val p = mockk<Process>(relaxed = true)
         every { p.isAlive } returns false
         every { p.exitValue() } returns 1
-        assertEquals(AppStatus.ERROR, runner.status(AppProcess(3, "name", 1002, p, false)))
+        assertEquals(ProcessStatus.ERROR, runner.status(AppProcess(3, "name", 1002, p, false)))
     }
 
     @Test
@@ -107,12 +107,114 @@ class AppRunnerTests {
 
             assertTrue(inner.isAlive)
             assertEquals(inner.pid(), appProcess.id)
-            assertEquals(AppStatus.RUNNING, runner.status(appProcess))
+            assertEquals(ProcessStatus.RUNNING, runner.status(appProcess))
 
             pingServer(appProcess.port)
         } finally {
             runner.stop(appProcess)
             assertFalse((appProcess.innerProcess as Process).isAlive)
+        }
+    }
+
+    @Test
+    fun usageReturnsValidOSProcessUsageMetrics() {
+        val runner = AppRunnerImpl(Config(stopProcessTimeoutSeconds = 1))
+        val appDir = File("test-apps/app")
+        if (appDir.exists()) {
+            appDir.deleteRecursively()
+        }
+        appDir.mkdirs()
+        File(appDir, "index.js").writeText(
+            """
+                const array = [];
+                setInterval(() => { 
+                    array.push("test");
+                    console.log("test"); 
+                }, 10)
+            """.trimIndent()
+        )
+        val appProcess = runner.start(appDir) {}
+        try {
+            Thread.sleep(1000)
+            val usage = runner.usage(appProcess)
+            assertNotNull(usage)
+            if (usage != null) {
+                println(usage)
+                assertTrue(usage.cpu > 0 && usage.cpu < 20)
+                assertTrue(usage.mem > 0 && usage.mem < 50 * 1024)
+            }
+        } finally {
+            runner.stop(appProcess)
+        }
+    }
+
+    @Test
+    fun appRunnerEnforcesMemLimit() {
+        val runner = AppRunnerImpl(Config(memLimitPerAppInMB = 30))
+        val appDir = File("test-apps/app")
+        if (appDir.exists()) {
+            appDir.deleteRecursively()
+        }
+        appDir.mkdirs()
+        File(appDir, "index.js").writeText(
+            """
+                const array = ["0"];
+                setInterval(() => {
+                    array.push(Array.from({ length: array.length }, (_, i) => i).join(''));
+                }, 2);
+            """.trimIndent()
+        )
+        var appProcess = runner.start(appDir) {}
+        try {
+            repeat(100) {
+                val usage = runner.usage(appProcess)
+                if (usage != null) {
+                    assertTrue(usage.mem < 50 * 1024)
+                } else {
+                    appProcess = runner.start(appDir) {}
+                }
+
+                Thread.sleep(100)
+            }
+        } finally {
+            runner.stop(appProcess)
+        }
+    }
+
+    @Test
+    fun appRunnerEnforcesCPULimit() {
+        val cpuLimit = 10.0
+        val runner = AppRunnerImpl(Config(cpuLimitPerApp = cpuLimit))
+        val appDir = File("test-apps/app")
+        if (appDir.exists()) {
+            appDir.deleteRecursively()
+        }
+        appDir.mkdirs()
+        File(appDir, "index.js").writeText(
+            """
+                setInterval(() => { console.log("test") }, 1);
+            """.trimIndent()
+        )
+        var appProcess = runner.start(appDir) {}
+        var total = 0.0
+        val iterations = 100
+
+        try {
+            repeat(iterations) {
+                val usage = runner.usage(appProcess)
+                if (usage != null) {
+                    total += usage.cpu
+                } else {
+                    appProcess = runner.start(appDir) {}
+                }
+
+                Thread.sleep(100)
+            }
+
+            val avgCpuUsage = total / iterations
+            assertTrue(avgCpuUsage < cpuLimit * 1.5)
+        } finally {
+            runner.stop(appProcess)
         }
     }
 

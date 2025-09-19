@@ -17,6 +17,8 @@ interface AppManager {
     fun logs(name: String, limit: Int): List<String>
 }
 
+data class AppStatus(val status: ProcessStatus, val usage: ProcessUsage?)
+
 @Component
 class ThreadSafeAppManager(val runner: AppRunner, val config: Config) : AppManager {
     private val logger = LoggerFactory.getLogger(AppManager::class.java)
@@ -79,7 +81,7 @@ class ThreadSafeAppManager(val runner: AppRunner, val config: Config) : AppManag
 
     override fun start(name: String) = lockPerApp(name) {
         val dir = File("${config.appsDirectory}/$name")
-        if (runner.status(processes[name]) == AppStatus.RUNNING) {
+        if (runner.status(processes[name]) == ProcessStatus.RUNNING) {
             return@lockPerApp
         }
 
@@ -94,11 +96,17 @@ class ThreadSafeAppManager(val runner: AppRunner, val config: Config) : AppManag
 
     override fun exists(name: String) = File("${config.appsDirectory}/$name").exists()
 
-    override fun status(name: String): AppStatus = runner.status(processes[name])
+    override fun status(name: String): AppStatus {
+        val status = runner.status(processes[name])
+        return AppStatus(
+            status = status,
+            usage = if (status == ProcessStatus.RUNNING) runner.usage(processes[name]) else null
+        )
+    }
 
     override fun appURL(name: String): String? {
         val process = processes[name] ?: return null
-        if (runner.status(process) != AppStatus.RUNNING) return null
+        if (runner.status(process) != ProcessStatus.RUNNING) return null
 
         return "http://127.0.0.1:${process.port}"
     }
@@ -113,7 +121,7 @@ class ThreadSafeAppManager(val runner: AppRunner, val config: Config) : AppManag
     }
 
     private fun handleExit(app: AppProcess) = lockPerApp(app.name) {
-        if (runner.status(app) != AppStatus.ERROR) {
+        if (runner.status(app) != ProcessStatus.ERROR) {
             return@lockPerApp
         }
 
