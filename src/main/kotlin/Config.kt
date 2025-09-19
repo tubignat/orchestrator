@@ -10,8 +10,8 @@ class Config(
     val stopProcessTimeoutSeconds: Int = System.getenv("STOP_PROCESS_TIMEOUT_SECONDS")?.toIntOrNull() ?: 20,
     val domain: String = System.getenv("DOMAIN") ?: "localhost",
     val maxRevivalsInOneMinute: Int = System.getenv("MAX_REVIVALS_IN_ONE_MINUTE")?.toIntOrNull() ?: 10,
-    val cpuLimitPerApp: Double = System.getenv("CPU_LIMIT_PER_APP")?.toDouble() ?: 5.0,
-    val memLimitPerAppInMB: Int = System.getenv("MEM_LIMIT_PER_APP_IN_MB")?.toIntOrNull() ?: 50,
+    val cpuLimitPerApp: Double = System.getenv("CPU_LIMIT_PER_APP")?.toDouble() ?: 10.0,
+    val memLimitPerAppInMB: Int = System.getenv("MEM_LIMIT_PER_APP_IN_MB")?.toIntOrNull() ?: 200,
 ) {
 
     private val logger = LoggerFactory.getLogger(Config::class.java)
