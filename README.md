@@ -16,7 +16,7 @@ sh test.sh
 
 ```
 docker build -t tubignat/orchestrator:latest .
-docker run p- 80:8080 -e DOMAIN=kineto.local tubignat/orchestrator:latest
+docker run -p 80:8080 -e DOMAIN=kineto.local tubignat/orchestrator:latest
 ```
 
 Use -e DOMAIN=... to set the base domain for subdomain routing. The default is localhost. Routing to subdomains via localhost (i.e. http://my-app.localhost/) works in Chrome and Firefox, but not Safari.
