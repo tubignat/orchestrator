@@ -23,6 +23,15 @@ Use -e DOMAIN=... to set the base domain for subdomain routing. The default is l
 
 ## Overview
 
+### Features
+
+- Deploy and run Node.js apps
+- Route traffic to apps by subdomain
+- Revive crashed apps, detect crash-loops
+- Track app status and resource usage
+- Enforce CPU and memory limits per app
+- Retrieve apps' logs
+
 ### API
 
 - **POST /deploy?name=app-name**. Body: app bundle in a .tar.gz format, must include `index.js` at the root. Deploys a new app or upgrades an existing one.
@@ -33,7 +42,7 @@ Use -e DOMAIN=... to set the base domain for subdomain routing. The default is l
 
 ### High-level architecture
 
-![Architecture diagram](https://raw.githubusercontent.com/tubignat/orchestrator/main/diagram.png)
+![Architecture diagram](https://github.com/tubignat/orchestrator/blob/main/diagram.png?raw=true)
 
 **App Manager**. Keeps track of apps' lifecycles: sends start/stop signals to App Runner, restarts crashed apps, detects crash-loops.<br>
 **App Runner**. Abstracts away handling OS processes, enforces resource usage limits. <br>
