@@ -33,7 +33,9 @@ Use -e DOMAIN=... to set the base domain for subdomain routing. The default is l
 
 ### High-level architecture
 
-**App Manager**. Keeps track of apps' lifecycles: sends start/stop signals to App Runner, restarts crashed apps, detects crash-loops.
+![Architecture diagram](https://raw.githubusercontent.com/tubignat/orchestrator/main/diagram.png)
+
+**App Manager**. Keeps track of apps' lifecycles: sends start/stop signals to App Runner, restarts crashed apps, detects crash-loops.<br>
 **App Runner**. Abstracts away handling OS processes, enforces resource usage limits. <br>
 **REST Controller**. Converts HTTP entities into internals and back<br>
 **Proxy**. Decides whether to route traffic to the orchestrator or to the app itself.
